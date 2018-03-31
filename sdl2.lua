@@ -1771,7 +1771,7 @@ function M.GetDisplayName(display_num)
 end
 
 function M.GetDisplayBounds(display_num)
-   local rect = ffi.new("SDL_Rect")
+   local rect = Rect() -- a global convenience wrapper for SDL_Rect
    sdl.SDL_GetDisplayBounds(display_num-1, rect)
    return rect
 end
