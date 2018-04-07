@@ -4,7 +4,8 @@ return {
       "github.com/cellux/zz_xlib"
    },
    exports = {
-      "sdl2"
+      "sdl2",
+      "iconv",
    },
    depends = {
       sdl2 = { "trigger" }
