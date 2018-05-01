@@ -1013,8 +1013,6 @@ int SDL_WaitEventTimeout (SDL_Event * event, int timeout);
 
 /* SDL_rect.h */
 
-/* these have been already defined in globals.lua
-
 typedef struct SDL_Point {
   int x;
   int y;
@@ -1024,8 +1022,6 @@ typedef struct SDL_Rect {
   int x, y;
   int w, h;
 } SDL_Rect;
-
-*/
 
 /* SDL_surface.h */
 
@@ -1271,16 +1267,12 @@ ffi.cdef(cdef)
 
 ffi.cdef [[
 
-/* SDL_Color has been already defined in globals.lua
-
 typedef struct SDL_Color {
   Uint8 r;
   Uint8 g;
   Uint8 b;
   Uint8 a;
 } SDL_Color;
-
-*/
 
 typedef struct SDL_Palette {
   int ncolors;
@@ -1799,6 +1791,96 @@ function M.PixelFormatEnumToMasks(format)
                                                 amask))
    return bpp[0], rmask[0], gmask[0], bmask[0], amask[0]
 end
+
+-- Point
+
+local Point_mt = {}
+
+function Point_mt:__tostring()
+   return sf("Point(%d,%d)", self.x, self.y)
+end
+
+_G.Point = ffi.metatype("SDL_Point", Point_mt)
+
+-- Rect
+
+local Rect_mt = {}
+
+function Rect_mt:__tostring()
+   return sf("Rect(%d,%d,%d,%d)",
+             self.x, self.y,
+             self.w, self.h)
+end
+
+function Rect_mt:update(x,y,w,h)
+   self.x = x or self.x
+   self.y = y or self.y
+   self.w = w or self.w
+   self.h = h or self.h
+end
+
+function Rect_mt:clear()
+   self:update(0,0,0,0)
+end
+
+_G.Rect = ffi.metatype("SDL_Rect", Rect_mt)
+
+-- Size
+
+ffi.cdef [[ struct zz_Size_ct { int w, h; }; ]]
+
+local Size_mt = {}
+
+function Size_mt:__tostring()
+   return sf("Size(%d,%d)", self.w, self.h)
+end
+
+function Size_mt:update(w,h)
+   self.w = w or self.w
+   self.h = h or self.h
+end
+
+function Size_mt:clear()
+   self:update(0,0)
+end
+
+_G.Size = ffi.metatype("struct zz_Size_ct", Size_mt)
+
+-- Color
+
+local Color_mt = {}
+
+function Color_mt:bytes()
+   return self.r, self.g, self.b, self.a
+end
+
+function Color_mt:floats()
+   return self.r/255, self.g/255, self.b/255, self.a/255
+end
+
+function Color_mt:u32be()
+   return
+      bit.lshift(self.r, 24) +
+      bit.lshift(self.g, 16) +
+      bit.lshift(self.b, 8) +
+      bit.lshift(self.a, 0)
+end
+
+function Color_mt:u32le()
+   return
+      bit.lshift(self.r, 0) +
+      bit.lshift(self.g, 8) +
+      bit.lshift(self.b, 16) +
+      bit.lshift(self.a, 24)
+end
+
+function Color_mt:u32()
+   return ffi.abi("le") and self:u32le() or self:u32be()
+end
+
+Color_mt.__index = Color_mt
+
+_G.Color = ffi.metatype("SDL_Color", Color_mt)
 
 -- Palette
 
