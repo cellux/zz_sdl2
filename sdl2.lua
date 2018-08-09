@@ -2273,11 +2273,13 @@ function M.GetCurrentAudioDriver()
 end
 
 function M.GetNumAudioDevices(iscapture)
-   return sdl.SDL_GetNumAudioDevices(iscapture or 0)
+   iscapture = iscapture and 1 or 0
+   return sdl.SDL_GetNumAudioDevices(iscapture)
 end
 
 function M.GetAudioDeviceName(index, iscapture)
-   local name = sdl.SDL_GetAudioDeviceName(index-1, iscapture or 0)
+   iscapture = iscapture and 1 or 0
+   local name = sdl.SDL_GetAudioDeviceName(index-1, iscapture)
    if name == nil then
       ef("SDL_GetAudioDeviceName(%d, %d) failed", index-1, iscapture)
    end
@@ -2332,7 +2334,7 @@ function M.OpenAudioDevice(opts)
    if type(device)=="number" then
       device = M.GetAudioDeviceName(device)
    end
-   local iscapture = opts.iscapture or 0
+   local iscapture = opts.iscapture and 1 or 0
    local desired = ffi.new("SDL_AudioSpec")
    desired.freq = opts.freq or 44100
    desired.format = opts.format or sdl.AUDIO_S16SYS
