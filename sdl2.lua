@@ -2295,37 +2295,41 @@ local audio_status_names = {
 }
 
 function AudioDevice_mt:status()
-   local status = tonumber(sdl.SDL_GetAudioDeviceStatus(self.dev))
+   local status = tonumber(sdl.SDL_GetAudioDeviceStatus(self.id))
    return audio_status_names[status]
 end
 
 function AudioDevice_mt:pause(pause_on)
-   sdl.SDL_PauseAudioDevice(self.dev, pause_on)
+   sdl.SDL_PauseAudioDevice(self.id, pause_on)
 end
 
 function AudioDevice_mt:start()
-   sdl.SDL_PauseAudioDevice(self.dev, 0)
+   sdl.SDL_PauseAudioDevice(self.id, 0)
 end
 
 function AudioDevice_mt:stop()
-   sdl.SDL_PauseAudioDevice(self.dev, 1)
+   sdl.SDL_PauseAudioDevice(self.id, 1)
 end
 
 function AudioDevice_mt:lock()
-   sdl.SDL_LockAudioDevice(self.dev)
+   sdl.SDL_LockAudioDevice(self.id)
 end
 
 function AudioDevice_mt:unlock()
-   sdl.SDL_UnlockAudioDevice(self.dev)
+   sdl.SDL_UnlockAudioDevice(self.id)
 end
 
 function AudioDevice_mt:close()
-   if self.dev then
-      sdl.SDL_CloseAudioDevice(self.dev)
-      self.dev = nil
+   if self.id then
+      sdl.SDL_CloseAudioDevice(self.id)
+      self.id = nil
    end
 end
-AudioDevice_mt.delete = AudioDevice_mt.close
+
+function AudioDevice_mt:delete()
+   self:stop()
+   self:close()
+end
 
 AudioDevice_mt.__index = AudioDevice_mt
 
@@ -2344,21 +2348,17 @@ function M.OpenAudioDevice(opts)
    desired.userdata = opts.userdata
    local obtained = ffi.new("SDL_AudioSpec")
    local allowed_changes = opts.allowed_changes or 0
-   local dev = sdl.SDL_OpenAudioDevice(device, iscapture, desired, obtained, allowed_changes)
-   if dev == 0 then
+   local device_id = sdl.SDL_OpenAudioDevice(device, iscapture, desired, obtained, allowed_changes)
+   if device_id == 0 then
       ef("SDL_OpenAudioDevice() failed: %s", M.GetError())
    end
    local self = {
-      dev = dev,
-      id = dev,
-      freq = obtained.freq,
-      format = obtained.format,
-      channels = obtained.channels,
-      samples = obtained.samples,
-      silence = obtained.silence,
-      size = obtained.size,
+      id = device_id,
+      spec = obtained,
+      callback = opts.callback,
+      userdata = opts.userdata,
    }
-   return setmetatable(self, AudioDevice_mt), obtained
+   return setmetatable(self, AudioDevice_mt)
 end
 
 function M.GetModState()
