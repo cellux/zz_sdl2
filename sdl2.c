@@ -1,5 +1,7 @@
 #include <unistd.h>
 #include <sys/epoll.h>
+#include <pthread.h>
+#include <signal.h>
 
 #include <SDL2/SDL_events.h>
 
@@ -40,6 +42,13 @@ void *zz_sdl2_sched_fd_poller_thread(void *arg) {
   ev.events = EPOLLIN;
   if (epoll_ctl(epfd, EPOLL_CTL_ADD, self->exit_trigger.fd, &ev) != 0) {
     fprintf(stderr, "sdl2_sched_fd_poller: epoll_ctl(ADD) failed (exit_trigger.fd)\n");
+    exit(1);
+  }
+  /* block signals */
+  sigset_t set;
+  sigfillset(&set);
+  if (pthread_sigmask(SIG_BLOCK, &set, NULL) != 0) {
+    fprintf(stderr, "sdl2_sched_fd_poller: pthread_sigmask() failed\n");
     exit(1);
   }
   while (1) {
