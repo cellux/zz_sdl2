@@ -2367,6 +2367,23 @@ end
 
 -- scheduler module
 
+-- https://wiki.libsdl.org/SDL_PumpEvents:
+--
+-- "WARNING: This should only be run in the thread that initialized
+-- the video subsystem, and for extra safety, you should consider only
+-- doing those things on the main thread in any case."
+--
+-- Due to this restriction, I had to resort to the hack below.
+--
+-- In a nutshell, we turn ZZ event processing inside-out: the
+-- scheduler poller is replaced with a version which gathers events
+-- via the SDL event machinery. SDL events are simply transformed into
+-- ZZ events and injected into the event queue via sched.emit(). We
+-- start a background thread which polls the original poller fd and
+-- sends a special event into the SDL event queue if it sees any
+-- activity. The SDL poller then invokes the original poller:wait()
+-- which processes these ZZ events.
+
 local sdl_event_types = {
    [sdl.SDL_QUIT]                 = 'sdl.quit',
    [sdl.SDL_WINDOWEVENT]          = 'sdl.windowevent',
@@ -2382,6 +2399,7 @@ local sdl_event_types = {
    [sdl.SDL_RENDER_TARGETS_RESET] = 'sdl.render_targets_reset',
 }
 
+-- a special SDL_Event used to signal activity on sched.poller_fd()
 local ZZ_SCHED_FD_POLLIN_EVENT = sdl.SDL_RegisterEvents(1)
 if ZZ_SCHED_FD_POLLIN_EVENT == -1 then
   ef("SDL_RegisterEvents() failed")
@@ -2414,12 +2432,13 @@ sched.poller_factory = function()
          local sdl_events_processed = 0
          while sdl.SDL_PollEvent(tmp_event) == 1 do
             if tmp_event.type == ZZ_SCHED_FD_POLLIN_EVENT then
-               -- there are events to be read on sched:fd()
+               -- activity detected on sched.poller_fd()
                -- call with timeout=0 as there is no need to wait
                old_wait(self, 0, process)
-               -- re-arm poller thread
+               -- re-arm poller in monitoring thread
                poll_trigger:fire()
             else
+               -- SDL event
                local evdata = ffi.new("SDL_Event", tmp_event) -- clone it
                local evtype = sdl_event_types[evdata.type]
                if evtype then
