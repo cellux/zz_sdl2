@@ -61,7 +61,7 @@ void *zz_sdl2_sched_fd_poller_thread(void *arg) {
       SDL_PushEvent(&sched_fd_pollin_event);
     }
     else if (ev.data.fd == self->poll_trigger.fd && (ev.events & EPOLLIN)) {
-      zz_trigger_poll(&self->poll_trigger);
+      zz_trigger_read(&self->poll_trigger); // reset trigger
       ev.data.fd = self->sched_fd;
       ev.events = EPOLLIN | EPOLLONESHOT;
       if (epoll_ctl(epfd, EPOLL_CTL_MOD, self->sched_fd, &ev) != 0) {
@@ -70,7 +70,7 @@ void *zz_sdl2_sched_fd_poller_thread(void *arg) {
       }
     }
     else if (ev.data.fd == self->exit_trigger.fd) {
-      zz_trigger_poll(&self->exit_trigger); /* ack */
+      zz_trigger_read(&self->exit_trigger); /* ack */
       break;
     }
     else {
